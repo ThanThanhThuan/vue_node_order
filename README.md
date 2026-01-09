@@ -5,6 +5,8 @@
 A full-stack B2B web application designed to manage the entire lifecycle of sales orders, customers, and product inventories. The system features Role-Based Access Control (RBAC) allowing both 
 Administrators to manage the business and Customers to track their own orders.
 
+<img width="1612" height="953" alt="image" src="https://github.com/user-attachments/assets/4c2fbf82-ebf5-4088-a618-9452331a2c2a" />
+
 🛠 Technical Stack
 
 Frontend (Client)
@@ -140,7 +142,7 @@ npm run dev
 cd client
 npm run dev
 
-<img width="1612" height="953" alt="image" src="https://github.com/user-attachments/assets/4c2fbf82-ebf5-4088-a618-9452331a2c2a" />
+
 
 
 
