@@ -1,0 +1,235 @@
+<template>
+  <div class="min-h-screen bg-slate-50">
+    <Navbar />
+    
+    <main class="page-container">
+      <!-- Header -->
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold">{{ $t('menu.orders') }}</h1>
+        <button @click="openAddModal" class="btn-primary">
+          + {{ $t('actions.add') || 'Add New' }}
+        </button>
+      </div>
+
+      <!-- FILTERS -->
+      <div class="card p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+           <label class="label">{{$t('dashboard.status')}}</label>
+           <select v-model="filters.status" class="select" @change="fetchOrders">
+             <option value="">{{$t('status.all')}}</option>
+             <option value="NEW">{{$t('status.new')}}</option>
+             <option value="PROCESSING">{{$t('status.processing')}}</option>
+             <option value="COMPLETED">{{$t('status.completed')}}</option>
+             <option value="CANCELLED">{{$t('status.cancelled')}}</option>
+           </select>
+        </div>
+        <div>
+            <label class="label">{{$t('common.from_date')}}</label>
+            <input type="date" v-model="filters.startDate" class="input" @change="fetchOrders">
+        </div>
+        <div>
+            <label class="label">{{$t('common.to_date')}}</label>
+            <input type="date" v-model="filters.endDate" class="input" @change="fetchOrders">
+        </div>
+        <div>
+            <label class="label">{{$t('actions.customer')}}</label>
+            <select v-model="filters.customer_id" class="select" @change="fetchOrders">
+                <option value="">{{$t('status.all_customers')}}</option>
+                <option v-for="c in customers" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
+        </div>
+      </div>
+
+      <!-- TABLE -->
+      <div class="card table-container">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="table-header">{{$t('actions.code')}}</th>
+              <th class="table-header">{{$t('actions.customer')}}</th>
+              <th class="table-header">{{$t('actions.product_service')}}</th>
+              <th class="table-header">{{$t('actions.value')}}</th>
+              <th class="table-header">{{$t('dashboard.status')}}</th>
+              <th class="table-header">{{$t('product.action')}}</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr v-for="order in orders" :key="order.id" class="hover:bg-slate-50">
+              <td class="table-cell font-bold text-gray-700">{{ order.order_code }}</td>
+              <td class="table-cell">{{ order.Customer?.name }}</td>
+              <td class="table-cell">{{ order.product_service }}</td>
+              <td class="table-cell font-mono">${{ order.total_value }}</td>
+              <td class="table-cell">
+                 <select 
+                    v-model="order.status" 
+                    @change="updateStatus(order)"
+                    class="text-xs border rounded p-1 font-bold"
+                    :class="statusColor(order.status)"
+                 >
+                    <option value="NEW">{{$t('status.new')}}</option>
+                      <option value="PROCESSING">{{$t('status.processing')}}</option>
+             <option value="COMPLETED">{{$t('status.completed')}}</option>
+             <option value="CANCELLED">{{$t('status.cancelled')}}</option>
+                 </select>
+              </td>
+              <td class="table-cell">
+                 <button class="text-blue-600 hover:underline text-sm">{{$t('product.view_details')}}</button>
+              </td>
+            </tr>
+            <tr v-if="orders.length === 0">
+              <td colspan="6" class="p-6 text-center text-gray-500">No orders found.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+
+    <!-- === ADD NEW ORDER MODAL === -->
+    <div v-if="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50 backdrop-blur-sm">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 overflow-hidden">
+        
+        <div class="bg-blue-600 px-6 py-4">
+          <h3 class="text-white font-bold text-lg">{{$t('actions.create_order')}}</h3>
+        </div>
+
+        <form @submit.prevent="createOrder" class="p-6 space-y-4">
+          
+          <!-- Order Code (Auto-generated suggestion) -->
+          <div>
+            <label class="label">{{$t('actions.order_code')}}</label>
+            <input v-model="newOrder.order_code" type="text" class="input bg-gray-50" required placeholder="e.g. ORD-2026-001">
+          </div>
+
+          <!-- Customer Selection -->
+          <div>
+            <label class="label">{{$t('actions.customer')}}</label>
+            <select v-model="newOrder.customer_id" class="select" required>
+              <option value="" disabled>Select a customer</option>
+              <option v-for="c in customers" :key="c.id" :value="c.id">{{ c.name }}</option>
+            </select>
+            <p v-if="customers.length === 0" class="text-xs text-red-500 mt-1">
+              No customers found. Please add customers to DB first.
+            </p>
+          </div>
+
+          <!-- Product -->
+          <div>
+            <label class="label">{{$t('actions.product_service')}}</label>
+            <input v-model="newOrder.product_service" type="text" class="input" required placeholder="What are they buying?">
+          </div>
+
+          <!-- Value -->
+          <div>
+            <label class="label">{{$t('actions.total_value')}} ($)</label>
+            <input v-model="newOrder.total_value" type="number" step="0.01" class="input" required>
+          </div>
+
+          <!-- Buttons -->
+          <div class="flex justify-end space-x-3 pt-4 border-t mt-4">
+            <button type="button" @click="showAddModal = false" class="btn-secondary">
+              {{$t('common.cancel')}}
+            </button>
+            <button type="submit" class="btn-primary">
+              {{$t('actions.create_order')}}
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+    <!-- === END MODAL === -->
+
+  </div>
+</template>
+
+<script setup>
+import { ref, reactive, onMounted } from 'vue';
+import Navbar from '../components/Navbar.vue';
+import api from '../api/axios';
+
+// State
+const orders = ref([]);
+const customers = ref([]);
+const showAddModal = ref(false);
+
+const filters = reactive({ 
+  status: '', 
+  startDate: '', 
+  endDate: '', 
+  customer_id: '' 
+});
+
+const newOrder = reactive({
+  order_code: '',
+  customer_id: '',
+  product_service: '',
+  total_value: 0,
+  status: 'NEW'
+});
+
+// --- Actions ---
+
+const openAddModal = () => {
+  // Reset form and generate a random code for convenience
+  newOrder.customer_id = '';
+  newOrder.product_service = '';
+  newOrder.total_value = 0;
+  newOrder.order_code = 'ORD-' + Math.floor(1000 + Math.random() * 9000); 
+  showAddModal.value = true;
+};
+
+const fetchOrders = async () => {
+  try {
+    const params = new URLSearchParams(filters).toString();
+    const res = await api.get(`/orders?${params}`);
+    orders.value = res.data;
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+  }
+};
+
+const createOrder = async () => {
+  try {
+    await api.post('/orders', newOrder);
+    alert("Order created successfully!");
+    showAddModal.value = false; // Close modal
+    fetchOrders(); // Refresh list
+  } catch (error) {
+    alert("Failed to create order. " + (error.response?.data?.error || error.message));
+  }
+};
+
+const updateStatus = async (order) => {
+  try {
+    await api.put(`/orders/${order.id}`, { status: order.status });
+    // Optional: show a small toast notification here
+  } catch (error) {
+    alert("Failed to update status");
+  }
+};
+
+// --- Helpers ---
+
+const statusColor = (s) => {
+    if(s === 'NEW') return 'text-blue-800 bg-blue-100 border-blue-200';
+    if(s === 'PROCESSING') return 'text-purple-800 bg-purple-100 border-purple-200';
+    if(s === 'COMPLETED') return 'text-green-800 bg-green-100 border-green-200';
+    if(s === 'CANCELLED') return 'text-red-800 bg-red-100 border-red-200';
+    return 'text-gray-800';
+};
+
+// --- Init ---
+
+onMounted(async () => {
+  try {
+    // Load customers for the dropdown
+    const custRes = await api.get('/customers');
+    customers.value = custRes.data;
+    
+    // Load orders
+    fetchOrders();
+  } catch (e) {
+    console.error("Init failed", e);
+  }
+});
+</script>
